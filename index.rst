@@ -70,11 +70,12 @@ CBP Throughput
 
 Integrating Sphere
 ------------------
+
 Parameters:
- - ``sphere_reflectance`` [:math:`\rho`]: Reflectivity of integrating sphere 
+ - ``sphere_reflectance``: Reflectivity of integrating sphere 
  - ``exit_port_diameter``: Size of the exit port of the integrating sphere (inch)
  - ``port_diameters``: List of the port diameters on the integrating sphere, including the exit port (list in inches)
- - ``sphere_diameter``[:math:`D_{sphere}`]: Diameter of the integrating sphere (inch)
+ - ``sphere_diameter``: Diameter of the integrating sphere (inch)
 
 Currently using  3P-GPS-060-SF AS-02266-060 from Labsphere, which uses Spectraflect coating on a 6 inch diameter sphere with and exit pupil of 2.5 inches and two 1 inch ports, one used for input of the fiber and the other for the photodiode. I am assuming a mean reflectance values of 0.985 for the Spectraflect.
 
