@@ -1,16 +1,16 @@
-:tocdepth: 1
+cd:tocdepth: 1
 
 .. sectnum::
 
 Abstract
 ========
 
-Determining the length of exposures needed when using the Collimated Beam Projector
+This tech note provides a description of the Exposure Time Calculator for the Collimated Beam Projector (CBP), which is part of the main telescope Calibration System. It includes results of expected exposure times for a range of pinhole masks in each LSST filter. 
 
 Overview
 ========
 
-Want to determine the exposure time required by the CBP, being fed by a tunable laser, for a given SNR. 
+The Collimated Beam Projector (CBP) is a novel calibration device used to determine the throughput of the LSST optics. It is fed with a tunable laser so that we can measure the throughput across all LSST filters. We want to determine the required exposure times of the LSSTCam to achieve a required Signal to Noise Ratio to develop the necessary calibration products. 
 
 .. math:: \textrm{exptime} = \frac{SNR^{2}}{\textrm{ph_rate}}
 
@@ -38,6 +38,10 @@ We are using the Ekspla NT242 currently. It is possible that we may have a backu
 
    Output of NT242 laser
 
+.. note::
+
+   This ETC assumes the laser will be used in continuous mode. It will likely be used in burst mode.
+
 Fiber Attentuation
 ------------------
 Parameters:
@@ -46,7 +50,7 @@ Parameters:
  - ``fiber coupling``: This is the throughput decrease based on the coupling between the fiber and the laser. 
  - ``use_fiber``: Whether or not a fiber will be used [True]
 
-Based loosely on LTS-664, I estimate that the fiber will run ~8m from the laser to the CBP. 
+Based loosely on LTS-664, I estimate that the fiber will run ~15m from the laser to the projector. 
 
 Likely, will get this fiber from ceramoptic: https://www.ceramoptec.com/products/fibers/optran-uv-/-wf.html.
 The attenuation (dB/km) for several kinds of fibers was sent to me by Ceramoptic (email) and ``WFNS`` was recommended.
@@ -62,11 +66,23 @@ Tranmission of the fiber is then calculated:
 
 .. math:: \textrm{T} = 10^{\frac{-dB/km}{distance(km)/10}}
 
-Based on initial measurements, the ``fiber_coupling`` is estimated to be 0.5 across all wavelengths.
+Based on initial measurements with a NA=0.22 fiber on April 11, 2023, the ``fiber_coupling`` is estimated to be 0.8 across wavelengths.
 
 
 CBP Throughput
 ==============
+
+The laser light travels from the laser to the CBP via fiber optic. This runs to a 6" integrating sphere, which also has a photodiode attached so that we can monitor the relative light level. The light from the integrating sphere then travels through the mask, which is positioned on the focal plane of the cbp. The CBP then collimates the light and sends it towards the LSST telescope and camera.
+
+The total throughput of the CBP consists of that of the integrating sphere, the mask efficiency and the efficiency of the CBP optics (mirrors and lenses) depends on the size of the mask pinhole. 
+
+.. figure:: /_static/cbp_drawing.png
+   :name: cbp_drawing
+   :target: ../_images/cbp_drawing.png
+   :alt: cbp_drawing
+
+   Layout of CBP
+
 
 Integrating Sphere
 ------------------
@@ -144,9 +160,11 @@ Parameters:
 Mirror Reflectance
 ------------------
 Parameters:
- - ``m1``, ``m2``, ``m3``: Reflectance for a mirror coating; options:[``Al-Ideal``, ``Al-Aged``, ``Al-Ag``]
+ - ``m1``, ``m2``, ``m3``: Reflectance for a mirror coating; options:[``Unprotected-Al``,``Protected-Al``,``Protected-Ag``]
 
-There are three mirrors [m1, m2, m3] that will be coated with either Al or Ag. The full throughput will be the combination of the three mirrors, whether all have the same coating or different. The curves we are using for the Al coatings come from the `Baseline Design Throughput <https://docushare.lsst.org/docushare/dsweb/View/Collection-1777>`__ on Docushare. The Al-Ag coating can be found on the `Mirror Coating Recipe <https://docushare.lsst.org/docushare/dsweb/View/Collection-1047>`__ on Docushare.
+There are three mirrors [m1, m2, m3] that will be coated with either Al or Ag. The full throughput will be the combination of the three mirrors, whether all have the same coating or different. The curves we are using come from a document sent directly from Tomislav Vicuna, called :file:`Final procAg-ProcAl_bareAl.xlsx`. 
+
+Currently, the understanding is that all three mirrors will be coated in Protected Silver.
 
 .. figure:: /_static/mirror_coating_reflectance.png
    :name: mirror_coating_reflectance
@@ -155,9 +173,9 @@ There are three mirrors [m1, m2, m3] that will be coated with either Al or Ag. T
 
    Reflectance of telescope mirror coatings
 
-Filter Throughput
------------------
-Using the filter throughput from the `Baseline Design Throughput <https://docushare.lsst.org/docushare/dsweb/View/Collection-1777>`__ on Docushare.
+Filter & Corrector Throughput
+-----------------------------
+Using the filter and lens throughput from the `Baseline Design Throughput <https://docushare.lsst.org/docushare/dsweb/View/Collection-1777>`__ on Docushare.
 
 .. figure:: /_static/ideal_filters.png
    :name: ideal_filters
@@ -165,6 +183,14 @@ Using the filter throughput from the `Baseline Design Throughput <https://docush
    :alt: ideal_filters
 
    Ideal filter throughput
+
+
+.. figure:: /_static/collimator_trans.png
+   :name: collimator_trans
+   :target: ../_images/collimator_trans.png
+   :alt: collimator_trans
+
+   Total transmission of three lenses that make up the collimator.
 
 Detector Efficiency
 -------------------
@@ -194,6 +220,9 @@ I am not currently calculating the readout time required for the electrometer. T
 
 Exposure Time Calculator
 ========================
+
+The code for the ETC is currently being developed in https://github.com/lsst-sitcom/notebooks_parfa30/tree/main/python/lsst/sitcom/parfa30/exposure_time_calculator.
+
 The exposure time calculator is saved in :file:`rubin_calib_etc.py` and runs given a configuration file, like :file:`calib_etc.yaml`. 
 
 First, photons per pixel are calculated, by taking the following steps:
@@ -223,7 +252,39 @@ First, photons per pixel are calculated, by taking the following steps:
 Sample Results
 ==============
 
-Using a 6 inch integrating sphere with a mask with a pinhole size of 150um and all telescope mirrors being ``Al-Ag``, you would get the following photon rate and total exposure times:
+The following results assume a 6 inch integrating sphere using the NT242 laser used in **continuous mode**.
+These results were generated with the calibration files :file:`'cbp_calib_etc_11092023.yaml'`.
+
+The photon rate (photons/second/pixel) of the CBP constant relative to the size fo the pinhole. 
+
+.. table:: Photon rate from CBP
+
+   +----------+----------------+
+   | Filter   |  Photon Rate   | 
+   +----------+----------------+
+   | u        | 4986.94        | 
+   +----------+----------------+
+   | g        | 253573.16      |
+   +----------+----------------+
+   | r        | 103405.55      |
+   +----------+----------------+
+   | i        | 45307.81       |
+   +----------+----------------+
+   | z        | 94469.94       |
+   +----------+----------------+
+   | y4       | 74643.21       |
+   +----------+----------------+
+
+The photon spot rate does change as a function of pinhole diameter, given the magnification of 16 between the CBP and LSSTCam
+
+.. figure:: /_static/cbp_photon_spot_rate.png
+   :name: cbp_photon_spot_rate
+   :target: ../_images/cbp_photon_spot_rate.png
+   :alt: cbp_photon_spot_rate
+
+   Mean photon rate per spot for CBP per filter as a function of the spot size
+
+The following two plots show the photon rate per spot at every wavelength for a mask with a 150um and 5um pinhole.
 
 .. figure:: /_static/photon_rate_150um_cbp.png
    :name: photon_rate_150um_cbp
@@ -232,14 +293,24 @@ Using a 6 inch integrating sphere with a mask with a pinhole size of 150um and a
 
    Photon rate per spot for CBP with 150um pinhole
 
+.. figure:: /_static/photon_rate_5um_cbp.png
+   :name: photon_rate_5um_cbp
+   :target: ../_images/photon_rate_5um_cbp.png
+   :alt: photon_rate_5um_cbp
+
+   Photon rate per spot for CBP with 5um pinhole
+
+In all cases, the exposure time per wavelength is on order of 1 second per wavelength to achieve a SNR of 300. If we include the fact that we can't take an exposure more often than every 15 seconds, we are heavily dominated by the overhead time. 
+
+.. figure:: /_static/exptime_5um_cbp.png
+   :name: exptime_5um_cbp
+   :target: ../_images/exptime_5um_cbp.png
+   :alt: exptime_5um_cbp
+
+   Photon rate per spot for CBP with 5um pinhole
 
 
-.. figure:: /_static/exptime_150um_cbp.png
-   :name: exptime_150um_cbp
-   :target: ../_images/exptime_150um_cbp.png
-   :alt: exptime_150um_cbp
 
-   Total exposure times for SNR = 300 for each spot
 
 
 .. Make in-text citations with: :cite:`bibkey`.
